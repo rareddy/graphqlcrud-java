@@ -1,70 +1,64 @@
+/*
+ * Copyright 2012-2017 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.graphqlcrud;
 
-import java.io.StringReader;
+import io.graphqlcrud.model.*;
+import org.junit.jupiter.api.Assertions;
+
+import java.sql.Connection;
+import java.sql.Types;
+import java.util.Collections;
+import java.util.List;
+
+import javax.inject.Inject;
 
 import org.junit.jupiter.api.Test;
 
-import graphql.schema.idl.SchemaGenerator;
-import graphql.schema.idl.SchemaParser;
-import graphql.schema.idl.TypeDefinitionRegistry;
+import io.agroal.api.AgroalDataSource;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.h2.H2DatabaseTestResource;
+import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTestResource(H2DatabaseTestResource.class)
+@QuarkusTest
 public class DatabaseSchemaTest {
 
-    @Test
-    void test() {
-        String schema = "    schema {\n" + 
-                "        query: QueryType\n" + 
-                "    }\n" + 
-                "\n" + 
-                "    type QueryType {\n" + 
-                "        hero(episode: Episode): Character\n" + 
-                "        human(id : String) : Human\n" + 
-                "        droid(id: ID!): Droid\n" + 
-                "    }\n" + 
-                "\n" + 
-                "\n" + 
-                "    enum Episode {\n" + 
-                "        NEWHOPE\n" + 
-                "        EMPIRE\n" + 
-                "        JEDI\n" + 
-                "    }\n" + 
-                "\n" + 
-                "    interface Character {\n" + 
-                "        id: ID!\n" + 
-                "        name: String!\n" + 
-                "        friends: [Character]\n" + 
-                "        appearsIn: [Episode]!\n" + 
-                "    }\n" + 
-                "\n" + 
-                "    type Human implements Character {\n" + 
-                "        id: ID!\n" + 
-                "        name: String!\n" + 
-                "        friends: [Character]\n" + 
-                "        appearsIn: [Episode]!\n" + 
-                "        homePlanet: String\n" + 
-                "    }\n" + 
-                "\n" + 
-                "    type Droid implements Character {\n" + 
-                "        id: ID!\n" + 
-                "        name: String!\n" + 
-                "        friends: [Character]\n" + 
-                "        appearsIn: [Episode]!\n" + 
-                "        primaryFunction: String\n" + 
-                "    }";
-        
-        
-        SchemaParser schemaParser = new SchemaParser();
-        SchemaGenerator schemaGenerator = new SchemaGenerator();
-
-        TypeDefinitionRegistry typeRegistry = schemaParser.parse(new StringReader(schema));
-        System.out.println(typeRegistry);
-    }
+    @Inject
+    private AgroalDataSource datasource;
 
     @Test
-    public void testSchemaPrint() {
-        System.out.println("xdsfds");
+    public void testSchemaPrint() throws Exception {
+        try (Connection connection = datasource.getConnection()){
+            Assertions.assertNotNull(connection);
+            Schema s = DatabaseSchemaBuilder.getSchema(connection, "PUBLIC");
+            Assertions.assertNotNull(s);
+            List<Entity> entities = s.getEntities();
+            Collections.sort(entities);
+            Assertions.assertEquals(4, entities.size());
+
+            Assertions.assertEquals("CUSTOMER", entities.get(2).getName());
+            List<Attribute> customerAttributes = entities.get(2).getAttributes();
+            Assertions.assertEquals(9, customerAttributes.size());
+            Assertions.assertEquals("SSN", customerAttributes.get(5).getName());
+            Assertions.assertEquals(Types.CHAR, customerAttributes.get(5).getType());
+
+            Assertions.assertEquals("ACCOUNT",entities.get(3).getName());
+            List<Relation> accountRelations = entities.get(3).getRelations();
+            Assertions.assertEquals(Cardinality.ONE_TO_MANY, accountRelations.get(0).getCardinality());
+            Assertions.assertEquals("accounts",accountRelations.get(0).getName());
+        }
     }
 }
