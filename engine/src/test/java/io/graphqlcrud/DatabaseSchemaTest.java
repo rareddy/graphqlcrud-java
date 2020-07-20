@@ -1,59 +1,70 @@
-/*
- * Copyright 2012-2017 the original author or authors.
- *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *      http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package io.graphqlcrud;
 
-import static org.junit.Assert.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
-import java.sql.Connection;
-import java.util.Collections;
-import java.util.List;
-
-import javax.inject.Inject;
+import java.io.StringReader;
 
 import org.junit.jupiter.api.Test;
 
-import io.agroal.api.AgroalDataSource;
-import io.graphqlcrud.model.Entity;
-import io.graphqlcrud.model.Schema;
+import graphql.schema.idl.SchemaGenerator;
+import graphql.schema.idl.SchemaParser;
+import graphql.schema.idl.TypeDefinitionRegistry;
 import io.quarkus.test.common.QuarkusTestResource;
 import io.quarkus.test.h2.H2DatabaseTestResource;
-import io.quarkus.test.junit.QuarkusTest;
 
 @QuarkusTestResource(H2DatabaseTestResource.class)
-@QuarkusTest
 public class DatabaseSchemaTest {
-    
-    @Inject
-    private AgroalDataSource datasource;
-    
+
     @Test
-    public void testSchemaPrint() throws Exception {
-        try (Connection connection = datasource.getConnection()){
-            assertNotNull(connection);
-            Schema s = DatabaseSchemaBuilder.getSchema(connection, "PUBLIC");
-            assertNotNull(s);
-            List<Entity> entities = s.getEntities();
-            Collections.sort(entities);
-            assertEquals(4, entities.size());
-            
-            // TODO: Write more assertions about what kind of columns and types
-            // and then relations this entity has
-            assertEquals("PRODUCT", entities.get(0).getName());
-            
-        }
+    void test() {
+        String schema = "    schema {\n" + 
+                "        query: QueryType\n" + 
+                "    }\n" + 
+                "\n" + 
+                "    type QueryType {\n" + 
+                "        hero(episode: Episode): Character\n" + 
+                "        human(id : String) : Human\n" + 
+                "        droid(id: ID!): Droid\n" + 
+                "    }\n" + 
+                "\n" + 
+                "\n" + 
+                "    enum Episode {\n" + 
+                "        NEWHOPE\n" + 
+                "        EMPIRE\n" + 
+                "        JEDI\n" + 
+                "    }\n" + 
+                "\n" + 
+                "    interface Character {\n" + 
+                "        id: ID!\n" + 
+                "        name: String!\n" + 
+                "        friends: [Character]\n" + 
+                "        appearsIn: [Episode]!\n" + 
+                "    }\n" + 
+                "\n" + 
+                "    type Human implements Character {\n" + 
+                "        id: ID!\n" + 
+                "        name: String!\n" + 
+                "        friends: [Character]\n" + 
+                "        appearsIn: [Episode]!\n" + 
+                "        homePlanet: String\n" + 
+                "    }\n" + 
+                "\n" + 
+                "    type Droid implements Character {\n" + 
+                "        id: ID!\n" + 
+                "        name: String!\n" + 
+                "        friends: [Character]\n" + 
+                "        appearsIn: [Episode]!\n" + 
+                "        primaryFunction: String\n" + 
+                "    }";
+        
+        
+        SchemaParser schemaParser = new SchemaParser();
+        SchemaGenerator schemaGenerator = new SchemaGenerator();
+
+        TypeDefinitionRegistry typeRegistry = schemaParser.parse(new StringReader(schema));
+        System.out.println(typeRegistry);
+    }
+
+    @Test
+    public void testSchemaPrint() {
+        System.out.println("xdsfds");
     }
 }
